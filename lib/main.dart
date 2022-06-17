@@ -4,10 +4,9 @@ import 'package:smiling_mirror/splash.dart';
 import 'package:camera/camera.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 
-late List<CameraDescription> _cameras;
+List<CameraDescription>? cameras;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  _cameras = await availableCameras();
   runApp(const MyApp());
 }
 
@@ -90,7 +89,16 @@ class _MainPageState extends State<MainPage> {
             ),
             const SizedBox(height: 100),
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () async {
+                await availableCameras().then(
+                  (value) => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CameraApp(cameras: value),
+                    ),
+                  ),
+                );
+              },
               child: const Text('Let\'s See'),
               style: ElevatedButton.styleFrom(
                 primary: Colors.white,

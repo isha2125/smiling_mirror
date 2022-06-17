@@ -1,30 +1,37 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-
-late List<CameraDescription> _cameras;
-
-void main() {
-  runApp(CameraApp());
-}
+import 'package:tflite/tflite.dart';
 
 class CameraApp extends StatefulWidget {
-  const CameraApp({super.key});
+  late List<CameraDescription>? cameras;
+  CameraApp({this.cameras, Key? key}) : super(key: key);
 
   @override
-  State<CameraApp> createState() => _CameraAppState();
+  _CameraAppState createState() => _CameraAppState();
 }
 
 class _CameraAppState extends State<CameraApp> {
+  CameraImage? cameraImage;
   late CameraController controller;
+  String output = '';
+
   @override
   void initState() {
     super.initState();
-    controller = CameraController(_cameras[1], ResolutionPreset.medium);
+    controller = CameraController(
+      widget.cameras![1],
+      ResolutionPreset.medium,
+    );
     controller.initialize().then((_) {
       if (!mounted) {
         return;
       }
-      setState(() {});
+      setState(() {
+        controller!.startImageStream((imageStream) {
+          cameraImage = imageStream;
+          runModel();
+        });
+      });
     }).catchError((Object e) {
       if (e is CameraException) {
         switch (e.code) {
@@ -37,6 +44,35 @@ class _CameraAppState extends State<CameraApp> {
         }
       }
     });
+
+    loadmodel();
+  }
+
+  runModel() async {
+    if (cameraImage != null) {
+      var predictions = await Tflite.runModelOnFrame(
+          bytesList: cameraImage!.planes.map((plane) {
+            return plane.bytes;
+          }).toList(),
+          imageHeight: cameraImage!.height,
+          imageWidth: cameraImage!.width,
+          imageMean: 127.5,
+          imageStd: 127.5,
+          rotation: 90,
+          numResults: 2,
+          threshold: 0.1,
+          asynch: true);
+      predictions!.forEach((element) {
+        setState(() {
+          output = element['label'];
+        });
+      });
+    }
+  }
+
+  loadmodel() async {
+    await Tflite.loadModel(
+        model: "asset/smile_detection.tflite", labels: "asset/labels.txt");
   }
 
   @override
@@ -48,7 +84,11 @@ class _CameraAppState extends State<CameraApp> {
   @override
   Widget build(BuildContext context) {
     if (!controller.value.isInitialized) {
-      return Container();
+      return const SizedBox(
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
     }
     return AspectRatio(
       aspectRatio: controller.value.aspectRatio,
