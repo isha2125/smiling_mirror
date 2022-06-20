@@ -1,6 +1,5 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:tflite/tflite.dart';
 
 class CameraApp extends StatefulWidget {
   late List<CameraDescription>? cameras;
@@ -26,53 +25,8 @@ class _CameraAppState extends State<CameraApp> {
       if (!mounted) {
         return;
       }
-      setState(() {
-        controller!.startImageStream((imageStream) {
-          cameraImage = imageStream;
-          runModel();
-        });
-      });
-    }).catchError((Object e) {
-      if (e is CameraException) {
-        switch (e.code) {
-          case 'CameraAccessDenied':
-            print('User denied camera access.');
-            break;
-          default:
-            print('Handle other errors.');
-            break;
-        }
-      }
+      setState(() {});
     });
-
-    loadmodel();
-  }
-
-  runModel() async {
-    if (cameraImage != null) {
-      var predictions = await Tflite.runModelOnFrame(
-          bytesList: cameraImage!.planes.map((plane) {
-            return plane.bytes;
-          }).toList(),
-          imageHeight: cameraImage!.height,
-          imageWidth: cameraImage!.width,
-          imageMean: 127.5,
-          imageStd: 127.5,
-          rotation: 90,
-          numResults: 2,
-          threshold: 0.1,
-          asynch: true);
-      predictions!.forEach((element) {
-        setState(() {
-          output = element['label'];
-        });
-      });
-    }
-  }
-
-  loadmodel() async {
-    await Tflite.loadModel(
-        model: "asset/smile_detection.tflite", labels: "asset/labels.txt");
   }
 
   @override
